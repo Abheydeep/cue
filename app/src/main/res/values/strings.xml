@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Cue</string>
+    <string name="accessibility_description">Reads chat messages to suggest smart replies on WhatsApp and Hinge</string>
+</resources>
