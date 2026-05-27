@@ -38,9 +38,9 @@ class ChatAccessibilityService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-        // Restore saved API key on service start
         val key = getSharedPreferences("cue_app", MODE_PRIVATE).getString("api_key", "") ?: ""
         if (key.isNotBlank()) GeminiService.setApiKey(key)
+        Logger.log("Service", "Connected — watching WhatsApp + Hinge")
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
@@ -51,7 +51,8 @@ class ChatAccessibilityService : AccessibilityService() {
         debounceJob?.cancel()
         debounceJob = scope.launch {
             delay(800)
-            val root = rootInActiveWindow ?: return@launch
+            Logger.log("Event", "Screen changed in $appName")
+            val root = rootInActiveWindow ?: run { Logger.log("Event", "rootInActiveWindow is null"); return@launch }
             when (appName) {
                 "Hinge" -> handleHingeScreen(root)
                 "WhatsApp" -> handleWhatsAppScreen(root)
@@ -63,22 +64,30 @@ class ChatAccessibilityService : AccessibilityService() {
 
     private fun handleHingeScreen(root: AccessibilityNodeInfo) {
         if (!isHingeChatScreen(root)) {
+            Logger.log("Hinge", "Profile screen detected — scraping")
             val profile = extractHingeProfile(root)
             if (profile.name.isNotBlank()) {
                 currentHingeKey = profile.name
                 ContextStore.saveProfile(this, profile.name, profile.toContextString())
+                Logger.log("Hinge", "Saved profile: ${profile.name}, age=${profile.age}, prompts=${profile.prompts.size}")
+            } else {
+                Logger.log("Hinge", "Could not extract profile name from screen")
             }
             return
         }
 
+        Logger.log("Hinge", "Chat screen detected")
         val messages = mutableListOf<String>()
         collectTexts(root, messages, minLen = 2, maxLen = 500)
         val conversation = messages.takeLast(10).joinToString("\n")
+        Logger.log("Hinge", "Extracted ${messages.size} text nodes, conversation=${conversation.length} chars")
 
         if (conversation.isNotBlank() && conversation != lastConversation) {
             lastConversation = conversation
             if (currentHingeKey.isNotBlank()) ContextStore.saveConversation(this, currentHingeKey, conversation)
             showSuggestions(conversation, "Hinge", ContextStore.getProfile(this, currentHingeKey))
+        } else {
+            Logger.log("Hinge", "Conversation unchanged — skipping")
         }
     }
 
@@ -124,16 +133,32 @@ class ChatAccessibilityService : AccessibilityService() {
     // ── WhatsApp ───────────────────────────────────────────────────────────────
 
     private fun handleWhatsAppScreen(root: AccessibilityNodeInfo) {
+        val messageNodes = root.findAccessibilityNodeInfosByViewId("com.whatsapp:id/message_text")
+        Logger.log("WhatsApp", "Found ${messageNodes?.size ?: 0} message nodes via view ID")
+
         val messages = mutableListOf<String>()
-        root.findAccessibilityNodeInfosByViewId("com.whatsapp:id/message_text")?.forEach { node ->
+        messageNodes?.forEach { node ->
             node.text?.toString()?.takeIf { it.isNotBlank() }?.let {
                 messages.add("${if (isOutgoingMessage(node.parent)) "Me" else "Them"}: $it")
             }
         }
+
+        // Fallback: if WhatsApp view IDs changed, try generic text scan
+        if (messages.isEmpty()) {
+            Logger.log("WhatsApp", "No messages via view ID — trying generic text scan")
+            val allTexts = mutableListOf<String>()
+            collectTexts(root, allTexts, minLen = 2, maxLen = 500)
+            Logger.log("WhatsApp", "Generic scan found ${allTexts.size} text nodes")
+        }
+
         val conversation = messages.takeLast(10).joinToString("\n")
+        Logger.log("WhatsApp", "${messages.size} messages extracted | conversation=${conversation.length} chars")
+
         if (conversation.isNotBlank() && conversation != lastConversation) {
             lastConversation = conversation
             showSuggestions(conversation, "WhatsApp", "")
+        } else {
+            Logger.log("WhatsApp", "No change or empty — skipping")
         }
     }
 
@@ -147,10 +172,16 @@ class ChatAccessibilityService : AccessibilityService() {
     private fun showSuggestions(conversation: String, appName: String, profileContext: String) {
         removeOverlay()
         showLoadingDot()
+        Logger.log("Overlay", "Showing loading dot, calling Gemini...")
         scope.launch {
             val replies = GeminiService.getSuggestions(conversation, appName, profileContext)
             removeOverlay()
-            if (replies.isNotEmpty()) showPanel(replies)
+            if (replies.isNotEmpty()) {
+                Logger.log("Overlay", "Showing panel with ${replies.size} replies")
+                showPanel(replies)
+            } else {
+                Logger.log("Overlay", "No replies returned — panel not shown")
+            }
         }
     }
 
@@ -164,7 +195,7 @@ class ChatAccessibilityService : AccessibilityService() {
             background = roundedBg(Color.parseColor("#CC101827"))
         }
         overlayView = view
-        try { windowManager?.addView(view, params) } catch (_: Exception) {}
+        try { windowManager?.addView(view, params) } catch (e: Exception) { Logger.log("Overlay", "addView loading ERROR: ${e.message}") }
     }
 
     private fun showPanel(replies: List<String>) {
@@ -236,7 +267,7 @@ class ChatAccessibilityService : AccessibilityService() {
         }
 
         overlayView = container
-        try { windowManager?.addView(container, params) } catch (_: Exception) {}
+        try { windowManager?.addView(container, params); Logger.log("Overlay", "Panel shown OK") } catch (e: Exception) { Logger.log("Overlay", "addView panel ERROR: ${e.message}") }
     }
 
     private fun removeOverlay() {

@@ -17,6 +17,7 @@ object GeminiService {
 
     fun setApiKey(key: String) {
         apiKey = key
+        Logger.log("Gemini", "API key set (${key.length} chars)")
     }
 
     private val client = OkHttpClient.Builder()
@@ -29,9 +30,13 @@ object GeminiService {
         appName: String,
         profileContext: String = ""
     ): List<String> = withContext(Dispatchers.IO) {
-        if (apiKey.isBlank()) return@withContext emptyList()
+        if (apiKey.isBlank()) {
+            Logger.log("Gemini", "ERROR: API key is blank — aborting")
+            return@withContext emptyList()
+        }
 
-        // URL must be built at call time, not as a const — otherwise the key never gets inserted
+        Logger.log("Gemini", "Calling API for $appName | conv ${conversation.length} chars | profile ${profileContext.length} chars")
+
         val url = "https://generativelanguage.googleapis.com/v1beta/models/$MODEL:generateContent?key=$apiKey"
         val prompt = buildPrompt(conversation, appName, profileContext)
 
@@ -56,17 +61,26 @@ object GeminiService {
 
         try {
             val response = client.newCall(request).execute()
-            val body = response.body?.string() ?: return@withContext emptyList()
-            parseReplies(body)
+            val httpCode = response.code
+            val body = response.body?.string() ?: ""
+            Logger.log("Gemini", "HTTP $httpCode | body ${body.length} chars")
+            if (!response.isSuccessful) {
+                Logger.log("Gemini", "ERROR body: ${body.take(200)}")
+                return@withContext emptyList()
+            }
+            val replies = parseReplies(body)
+            Logger.log("Gemini", "Got ${replies.size} replies")
+            replies
         } catch (e: Exception) {
+            Logger.log("Gemini", "EXCEPTION: ${e.javaClass.simpleName}: ${e.message}")
             emptyList()
         }
     }
 
     private fun buildPrompt(conversation: String, appName: String, profileContext: String): String {
-        val profileSection = if (profileContext.isNotBlank()) {
+        val profileSection = if (profileContext.isNotBlank())
             "Their profile (use this to personalise replies naturally):\n---\n$profileContext\n---\n\n"
-        } else ""
+        else ""
 
         return """
 You are a sharp conversational assistant helping craft replies for $appName.
@@ -115,6 +129,7 @@ REPLY3: <reply here>
             }
             replies
         } catch (e: Exception) {
+            Logger.log("Gemini", "Parse error: ${e.message}")
             emptyList()
         }
     }

@@ -86,6 +86,42 @@
         android:padding="16dp"
         android:textSize="13sp"
         android:textColor="#333333"
-        android:lineSpacingExtra="4dp"/>
+        android:lineSpacingExtra="4dp"
+        android:layout_marginBottom="24dp"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="DEBUG"
+        android:textSize="11sp"
+        android:letterSpacing="0.1"
+        android:textColor="#999999"
+        android:layout_marginBottom="12dp"/>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/btnCopyLogs"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:text="Copy Logs"
+            android:backgroundTint="#444444"
+            android:textColor="#FFFFFF"
+            android:layout_marginEnd="8dp"/>
+
+        <Button
+            android:id="@+id/btnClearLogs"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:text="Clear"
+            android:backgroundTint="#888888"
+            android:textColor="#FFFFFF"/>
+
+    </LinearLayout>
 
 </LinearLayout>

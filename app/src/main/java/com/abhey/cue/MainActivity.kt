@@ -1,5 +1,7 @@
 package com.abhey.cue
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Intent
 import android.os.Bundle
 import android.provider.Settings
@@ -18,6 +20,8 @@ class MainActivity : AppCompatActivity() {
         val apiKeyInput = findViewById<EditText>(R.id.etApiKey)
         val saveBtn = findViewById<Button>(R.id.btnSave)
         val accessibilityBtn = findViewById<Button>(R.id.btnAccessibility)
+        val logsBtn = findViewById<Button>(R.id.btnCopyLogs)
+        val clearLogsBtn = findViewById<Button>(R.id.btnClearLogs)
         val statusText = findViewById<TextView>(R.id.tvStatus)
 
         val prefs = getSharedPreferences("cue_app", MODE_PRIVATE)
@@ -37,6 +41,22 @@ class MainActivity : AppCompatActivity() {
         }
 
         accessibilityBtn.setOnClickListener { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
+
+        logsBtn.setOnClickListener {
+            val logs = Logger.all()
+            if (logs.isBlank()) {
+                Toast.makeText(this, "No logs yet — open WhatsApp first", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            val cb = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+            cb.setPrimaryClip(ClipData.newPlainText("cue_logs", logs))
+            Toast.makeText(this, "Logs copied! Paste to Claude.", Toast.LENGTH_SHORT).show()
+        }
+
+        clearLogsBtn.setOnClickListener {
+            Logger.clear()
+            Toast.makeText(this, "Logs cleared", Toast.LENGTH_SHORT).show()
+        }
 
         updateStatus(statusText)
     }
