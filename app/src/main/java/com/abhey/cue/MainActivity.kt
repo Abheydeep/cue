@@ -26,6 +26,7 @@ class MainActivity : AppCompatActivity() {
 
         val prefs = getSharedPreferences("cue_app", MODE_PRIVATE)
         val builtInKey = BuildConfig.GEMINI_API_KEY
+        Logger.log("MainActivity", "BuildConfig key length=${builtInKey.length} prefix=${builtInKey.take(8)}")
         // Always prefer the built-in key — overrides any stale cached key
         val activeKey = if (builtInKey.isNotBlank()) builtInKey
                         else prefs.getString("api_key", "") ?: ""

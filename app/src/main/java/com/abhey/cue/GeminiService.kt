@@ -13,11 +13,11 @@ import java.util.concurrent.TimeUnit
 object GeminiService {
 
     private var apiKey = ""
-    private const val MODEL = "gemini-2.5-pro"
+    private const val MODEL = "gemini-2.0-flash"
 
     fun setApiKey(key: String) {
         apiKey = key
-        Logger.log("Gemini", "API key set (${key.length} chars)")
+        Logger.log("Gemini", "API key set (${key.length} chars) prefix=${key.take(8)}")
     }
 
     private val client = OkHttpClient.Builder()
