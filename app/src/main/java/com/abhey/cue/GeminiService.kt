@@ -13,7 +13,7 @@ import java.util.concurrent.TimeUnit
 object GeminiService {
 
     private var apiKey = ""
-    private const val MODEL = "gemini-1.5-flash"
+    private const val MODEL = "gemini-2.5-pro"
 
     fun setApiKey(key: String) {
         apiKey = key
@@ -37,7 +37,7 @@ object GeminiService {
 
         Logger.log("Gemini", "Calling API for $appName | conv ${conversation.length} chars | profile ${profileContext.length} chars")
 
-        val url = "https://generativelanguage.googleapis.com/v1beta/models/$MODEL:generateContent?key=$apiKey"
+        val url = "https://generativelanguage.googleapis.com/v1/models/$MODEL:generateContent?key=$apiKey"
         val prompt = buildPrompt(conversation, appName, profileContext)
 
         val requestBody = JSONObject().apply {
