@@ -25,14 +25,13 @@ class MainActivity : AppCompatActivity() {
         val statusText = findViewById<TextView>(R.id.tvStatus)
 
         val prefs = getSharedPreferences("cue_app", MODE_PRIVATE)
-        // Key injected at build time from GitHub Secret — not stored in source
         val builtInKey = BuildConfig.GEMINI_API_KEY
-        val savedKey = prefs.getString("api_key", builtInKey)?.ifBlank { builtInKey } ?: builtInKey
-        if (prefs.getString("api_key", null) == null && builtInKey.isNotBlank()) {
-            prefs.edit().putString("api_key", builtInKey).apply()
-        }
-        apiKeyInput.setText(savedKey)
-        GeminiService.setApiKey(savedKey)
+        // Always prefer the built-in key — overrides any stale cached key
+        val activeKey = if (builtInKey.isNotBlank()) builtInKey
+                        else prefs.getString("api_key", "") ?: ""
+        if (builtInKey.isNotBlank()) prefs.edit().putString("api_key", builtInKey).apply()
+        apiKeyInput.setText(activeKey)
+        GeminiService.setApiKey(activeKey)
 
         saveBtn.setOnClickListener {
             val key = apiKeyInput.text.toString().trim()
