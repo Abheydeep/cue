@@ -23,10 +23,14 @@ class MainActivity : AppCompatActivity() {
         val statusText = findViewById<TextView>(R.id.tvStatus)
 
         val prefs = getSharedPreferences("cue_app", MODE_PRIVATE)
-        val savedKey = prefs.getString("api_key", "") ?: ""
+        // Pre-fill with bundled key if nothing saved yet
+        val defaultKey = "AIzaSyDfFJi4taond4zpFTsVl8zuT1hPpT1gQpw"
+        val savedKey = prefs.getString("api_key", defaultKey) ?: defaultKey
+        if (prefs.getString("api_key", null) == null) {
+            prefs.edit().putString("api_key", defaultKey).apply()
+        }
         apiKeyInput.setText(savedKey)
-        // Restore key into GeminiService after process restart
-        if (savedKey.isNotBlank()) GeminiService.setApiKey(savedKey)
+        GeminiService.setApiKey(savedKey)
 
         // Save API key
         saveBtn.setOnClickListener {
