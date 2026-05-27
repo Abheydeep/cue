@@ -9,21 +9,20 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="✨ Cue"
+        android:text="Cue"
         android:textSize="28sp"
         android:textStyle="bold"
-        android:textColor="#1a1a2e"
+        android:textColor="#101827"
         android:layout_marginBottom="4dp"/>
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Smart replies for WhatsApp &amp; Hinge"
+        android:text="Context-aware reply assistant"
         android:textSize="14sp"
         android:textColor="#888888"
         android:layout_marginBottom="32dp"/>
 
-    <!-- API Key -->
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -48,39 +47,28 @@
         android:layout_width="match_parent"
         android:layout_height="48dp"
         android:text="Save API Key"
-        android:backgroundTint="#1a1a2e"
+        android:backgroundTint="#101827"
         android:textColor="#FFFFFF"
         android:layout_marginBottom="32dp"/>
 
-    <!-- Permissions -->
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="PERMISSIONS REQUIRED"
+        android:text="PERMISSIONS"
         android:textSize="11sp"
         android:letterSpacing="0.1"
         android:textColor="#999999"
         android:layout_marginBottom="12dp"/>
 
     <Button
-        android:id="@+id/btnOverlay"
-        android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:text="1. Grant Overlay Permission"
-        android:backgroundTint="#4a7db5"
-        android:textColor="#FFFFFF"
-        android:layout_marginBottom="12dp"/>
-
-    <Button
         android:id="@+id/btnAccessibility"
         android:layout_width="match_parent"
         android:layout_height="48dp"
-        android:text="2. Enable Accessibility Service"
+        android:text="Enable Accessibility Service"
         android:backgroundTint="#4a7db5"
         android:textColor="#FFFFFF"
         android:layout_marginBottom="32dp"/>
 
-    <!-- Status -->
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"

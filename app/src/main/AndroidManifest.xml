@@ -1,11 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Permissions needed -->
-    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 
     <application
         android:allowBackup="true"
@@ -15,7 +11,6 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Cue">
 
-        <!-- Main setup screen -->
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -25,7 +20,6 @@
             </intent-filter>
         </activity>
 
-        <!-- Accessibility Service — reads WhatsApp/Hinge screen -->
         <service
             android:name=".ChatAccessibilityService"
             android:exported="true"
@@ -38,12 +32,6 @@
                 android:name="android.accessibilityservice"
                 android:resource="@xml/accessibility_service" />
         </service>
-
-        <!-- Floating overlay service -->
-        <service
-            android:name=".FloatingWindowService"
-            android:exported="false"
-            android:foregroundServiceType="specialUse" />
 
     </application>
 </manifest>
