@@ -36,10 +36,13 @@ object GeminiService {
             return@withContext emptyList()
         }
 
-        Logger.log("AI", "Calling NVIDIA/$MODEL for $appName | conv ${conversation.length} chars")
+        Logger.log("AI", "Calling NVIDIA/$MODEL for $appName | conv ${conversation.length} chars | profileCtx=${profileContext.length} chars")
 
         val systemPrompt = buildSystemPrompt(appName, profileContext)
-        val userMsg = "Conversation so far:\n$conversation"
+        val userMsg = if (appName == "HingeOpener")
+            "Generate 3 personalised openers based on the profile above."
+        else
+            "Conversation so far:\n$conversation"
 
         val requestBody = JSONObject().apply {
             put("model", MODEL)
@@ -78,6 +81,30 @@ object GeminiService {
     }
 
     private fun buildSystemPrompt(appName: String, profileContext: String): String {
+        // Dedicated opener prompt when we've just finished reading a full Hinge profile
+        if (appName == "HingeOpener") {
+            return """You are helping craft the very first message on Hinge after reading someone's full profile.
+
+Profile:
+$profileContext
+
+Give exactly 3 opener options. Each must feel personal, referencing something specific from the profile.
+- Opener 1: A genuine, specific compliment on a prompt/answer
+- Opener 2: A playful or witty take on something in their profile
+- Opener 3: A curious question sparked by something unique in their profile
+
+Rules:
+- Keep each opener under 2 sentences
+- No generic lines like "Hey, how's it going?" — must reference their actual profile
+- No emojis unless they fit naturally
+- Match the language style that fits the profile (Hindi/English/Hinglish)
+
+Format your response EXACTLY like this (no extra text):
+REPLY1: <opener here>
+REPLY2: <opener here>
+REPLY3: <opener here>"""
+        }
+
         val profileSection = if (profileContext.isNotBlank())
             "Their profile info (use this to personalise replies naturally):\n$profileContext\n\n"
         else ""

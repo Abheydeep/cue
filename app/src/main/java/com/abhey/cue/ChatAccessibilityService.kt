@@ -79,8 +79,19 @@ class ChatAccessibilityService : AccessibilityService() {
             val profile = extractHingeProfile(root)
             if (profile.name.isNotBlank()) {
                 currentHingeKey = profile.name
-                ContextStore.saveProfile(this, profile.name, profile.toContextString())
-                Logger.log("Hinge", "Saved profile: ${profile.name}, age=${profile.age}, prompts=${profile.prompts.size}")
+                // Accumulate prompts instead of overwriting
+                ContextStore.mergeProfile(this, profile.name, profile.name, profile.age, profile.job, profile.prompts)
+                val count = ContextStore.promptCount(this, profile.name)
+                Logger.log("Hinge", "Merged profile: ${profile.name}, age=${profile.age}, newPrompts=${profile.prompts.size}, totalPrompts=$count")
+
+                // Check if we now have a complete profile (name + at least 3 prompts)
+                if (count >= 3) {
+                    val fullProfile = ContextStore.getProfile(this, profile.name)
+                    Logger.log("Hinge", "Profile complete ($count prompts) — showing opener suggestions")
+                    showSuggestions("", "HingeOpener", fullProfile)
+                } else {
+                    Logger.log("Hinge", "Profile incomplete ($count/3 prompts) — keep scrolling")
+                }
             } else {
                 Logger.log("Hinge", "Could not extract profile name from screen")
             }
@@ -90,13 +101,18 @@ class ChatAccessibilityService : AccessibilityService() {
         Logger.log("Hinge", "Chat screen detected")
         val messages = mutableListOf<String>()
         collectTexts(root, messages, minLen = 2, maxLen = 500)
-        val conversation = messages.takeLast(10).joinToString("\n")
-        Logger.log("Hinge", "Extracted ${messages.size} text nodes, conversation=${conversation.length} chars")
+
+        // Filter out UI chrome: very short strings and known Hinge UI labels
+        val hingeUiNoise = setOf("Like", "Comment", "Send", "Match", "We Met", "Remove", "Unmatch", "Report")
+        val filtered = messages.filter { it !in hingeUiNoise }
+        val conversation = filtered.takeLast(10).joinToString("\n")
+        Logger.log("Hinge", "Extracted ${messages.size} text nodes (${filtered.size} after filter), conversation=${conversation.length} chars")
 
         if (conversation.isNotBlank() && conversation != lastConversation) {
             lastConversation = conversation
             if (currentHingeKey.isNotBlank()) ContextStore.saveConversation(this, currentHingeKey, conversation)
-            showSuggestions(conversation, "Hinge", ContextStore.getProfile(this, currentHingeKey))
+            val profileCtx = if (currentHingeKey.isNotBlank()) ContextStore.getProfile(this, currentHingeKey) else ""
+            showSuggestions(conversation, "Hinge", profileCtx)
         } else {
             Logger.log("Hinge", "Conversation unchanged — skipping")
         }
@@ -202,13 +218,14 @@ class ChatAccessibilityService : AccessibilityService() {
         apiJob?.cancel()  // cancel any in-flight call
         removeOverlay()
         showLoadingDot()
-        Logger.log("Overlay", "Showing loading dot, calling AI...")
+        val isOpener = appName == "HingeOpener"
+        Logger.log("Overlay", "Showing loading dot, calling AI (isOpener=$isOpener)...")
         apiJob = scope.launch {
             val replies = GeminiService.getSuggestions(conversation, appName, profileContext)
             removeOverlay()
             if (replies.isNotEmpty()) {
                 Logger.log("Overlay", "Showing panel with ${replies.size} replies")
-                showPanel(replies)
+                showPanel(replies, isOpener)
             } else {
                 Logger.log("Overlay", "No replies returned — panel not shown")
             }
@@ -233,7 +250,7 @@ class ChatAccessibilityService : AccessibilityService() {
         return if (resourceId > 0) resources.getDimensionPixelSize(resourceId) else 0
     }
 
-    private fun showPanel(replies: List<String>) {
+    private fun showPanel(replies: List<String>, isOpener: Boolean = false) {
         val navBar = navBarHeightPx()
         val params = overlayParams(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM, yOff = navBar)
 
@@ -246,7 +263,7 @@ class ChatAccessibilityService : AccessibilityService() {
         // Header
         val header = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(20, 8, 12, 4) }
         header.addView(TextView(this).apply {
-            text = "Cue"
+            text = if (isOpener) "Cue · Opener" else "Cue"
             setTextColor(Color.parseColor("#101827"))
             textSize = 11f
             letterSpacing = 0.08f
@@ -267,7 +284,8 @@ class ChatAccessibilityService : AccessibilityService() {
             layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 1)
         })
 
-        val labels = listOf("Direct", "Light", "Ask back")
+        val labels = if (isOpener) listOf("Opener 1", "Opener 2", "Opener 3")
+                     else listOf("Direct", "Light", "Ask back")
         replies.forEachIndexed { idx, reply ->
             val row = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
