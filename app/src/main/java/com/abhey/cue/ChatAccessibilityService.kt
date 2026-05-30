@@ -32,8 +32,13 @@ class ChatAccessibilityService : AccessibilityService() {
 
     private val supportedApps = mapOf(
         "com.whatsapp" to "WhatsApp",
-        "co.hinge" to "Hinge"
+        "co.hinge" to "Hinge",
+        "hinge.app" to "Hinge",
+        "com.hinge.app" to "Hinge"
     )
+
+    private val seenPackages = mutableSetOf<String>()
+    private var apiJob: Job? = null   // track in-flight API call so we can cancel it
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -46,6 +51,12 @@ class ChatAccessibilityService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         event ?: return
         val packageName = event.packageName?.toString() ?: return
+
+        // Log every new package we see — helps identify real Hinge package name
+        if (seenPackages.add(packageName)) {
+            Logger.log("Package", "New app seen: $packageName")
+        }
+
         val appName = supportedApps[packageName] ?: return
 
         debounceJob?.cancel()
@@ -188,10 +199,11 @@ class ChatAccessibilityService : AccessibilityService() {
     // ── Overlay ────────────────────────────────────────────────────────────────
 
     private fun showSuggestions(conversation: String, appName: String, profileContext: String) {
+        apiJob?.cancel()  // cancel any in-flight call
         removeOverlay()
         showLoadingDot()
-        Logger.log("Overlay", "Showing loading dot, calling Gemini...")
-        scope.launch {
+        Logger.log("Overlay", "Showing loading dot, calling AI...")
+        apiJob = scope.launch {
             val replies = GeminiService.getSuggestions(conversation, appName, profileContext)
             removeOverlay()
             if (replies.isNotEmpty()) {
