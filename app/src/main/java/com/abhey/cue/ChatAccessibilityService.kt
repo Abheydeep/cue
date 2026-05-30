@@ -38,6 +38,7 @@ class ChatAccessibilityService : AccessibilityService() {
     )
 
     private val seenPackages = mutableSetOf<String>()
+    private var lastActivePackage = ""
     private var apiJob: Job? = null   // track in-flight API call so we can cancel it
 
     override fun onServiceConnected() {
@@ -52,9 +53,11 @@ class ChatAccessibilityService : AccessibilityService() {
         event ?: return
         val packageName = event.packageName?.toString() ?: return
 
-        // Log every new package we see — helps identify real Hinge package name
-        if (seenPackages.add(packageName)) {
-            Logger.log("Package", "New app seen: $packageName")
+        // Log every new package AND every time active app changes
+        seenPackages.add(packageName)
+        if (packageName != lastActivePackage) {
+            lastActivePackage = packageName
+            Logger.log("Package", "Active app: $packageName (supported=${supportedApps.containsKey(packageName)})")
         }
 
         val appName = supportedApps[packageName] ?: return
