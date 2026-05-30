@@ -13,7 +13,7 @@ import java.util.concurrent.TimeUnit
 object GeminiService {
 
     private var apiKey = ""
-    private const val MODEL = "meta/llama-4-maverick-17b-128e-instruct"
+    private const val MODEL = "mistralai/mistral-large-3-675b-instruct-2512"
     private const val URL = "https://integrate.api.nvidia.com/v1/chat/completions"
 
     fun setApiKey(key: String) {
