@@ -152,7 +152,14 @@ class ChatAccessibilityService : AccessibilityService() {
         }
 
         val conversation = messages.takeLast(10).joinToString("\n")
-        Logger.log("WhatsApp", "${messages.size} messages extracted | conversation=${conversation.length} chars")
+        Logger.log("WhatsApp", "${messages.size} messages extracted | last=${messages.lastOrNull()?.take(30)} | conversation=${conversation.length} chars")
+
+        // Only suggest replies when the last message is from the other person
+        val lastIsIncoming = messages.lastOrNull()?.startsWith("Them:") == true
+        if (!lastIsIncoming) {
+            Logger.log("WhatsApp", "Last message is outgoing — no suggestions needed")
+            return
+        }
 
         if (conversation.isNotBlank() && conversation != lastConversation) {
             lastConversation = conversation
@@ -163,8 +170,19 @@ class ChatAccessibilityService : AccessibilityService() {
     }
 
     private fun isOutgoingMessage(node: AccessibilityNodeInfo?): Boolean {
-        val desc = node?.contentDescription?.toString() ?: return false
-        return desc.contains("You") || desc.contains("sent")
+        node ?: return false
+        // Check content description first
+        val desc = node.contentDescription?.toString() ?: ""
+        if (desc.contains("You:") || desc.contains("sent")) return true
+        // WhatsApp outgoing bubbles have a specific view ID suffix or are right-aligned
+        // Check if any parent has the outgoing message container ID
+        var current: AccessibilityNodeInfo? = node
+        repeat(4) {
+            current = current?.parent
+            val id = current?.viewIdResourceName ?: ""
+            if (id.contains("out") || id.contains("send")) return true
+        }
+        return false
     }
 
     // ── Overlay ────────────────────────────────────────────────────────────────
@@ -198,8 +216,14 @@ class ChatAccessibilityService : AccessibilityService() {
         try { windowManager?.addView(view, params) } catch (e: Exception) { Logger.log("Overlay", "addView loading ERROR: ${e.message}") }
     }
 
+    private fun navBarHeightPx(): Int {
+        val resourceId = resources.getIdentifier("navigation_bar_height", "dimen", "android")
+        return if (resourceId > 0) resources.getDimensionPixelSize(resourceId) else 0
+    }
+
     private fun showPanel(replies: List<String>) {
-        val params = overlayParams(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM)
+        val navBar = navBarHeightPx()
+        val params = overlayParams(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM, yOff = navBar)
 
         val container = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -256,6 +280,8 @@ class ChatAccessibilityService : AccessibilityService() {
                 setTextColor(Color.parseColor("#101827"))
                 textSize = 14f
                 setPadding(0, 3, 0, 0)
+                maxLines = 2
+                ellipsize = android.text.TextUtils.TruncateAt.END
             })
             container.addView(row)
             if (idx < replies.size - 1) {
