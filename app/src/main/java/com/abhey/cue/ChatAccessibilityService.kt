@@ -30,12 +30,16 @@ class ChatAccessibilityService : AccessibilityService() {
     private var windowManager: WindowManager? = null
     private var overlayView: View? = null
 
-    private val supportedApps = mapOf(
-        "com.whatsapp" to "WhatsApp",
-        "co.hinge" to "Hinge",
-        "hinge.app" to "Hinge",
-        "com.hinge.app" to "Hinge"
+    // Regex-based matching so any variant of the package name works
+    private val appPatterns = listOf(
+        Regex(".*whatsapp.*", RegexOption.IGNORE_CASE) to "WhatsApp",
+        Regex(".*hinge.*", RegexOption.IGNORE_CASE) to "Hinge",
+        Regex(".*bumble.*", RegexOption.IGNORE_CASE) to "Bumble",
+        Regex(".*tinder.*", RegexOption.IGNORE_CASE) to "Tinder"
     )
+
+    private fun resolveAppName(packageName: String): String? =
+        appPatterns.firstOrNull { (regex, _) -> regex.matches(packageName) }?.second
 
     private val seenPackages = mutableSetOf<String>()
     private var lastActivePackage = ""
@@ -57,10 +61,10 @@ class ChatAccessibilityService : AccessibilityService() {
         seenPackages.add(packageName)
         if (packageName != lastActivePackage) {
             lastActivePackage = packageName
-            Logger.log("Package", "Active app: $packageName (supported=${supportedApps.containsKey(packageName)})")
+            Logger.log("Package", "Active app: $packageName → ${resolveAppName(packageName) ?: "unsupported"}")
         }
 
-        val appName = supportedApps[packageName] ?: return
+        val appName = resolveAppName(packageName) ?: return
 
         debounceJob?.cancel()
         debounceJob = scope.launch {
